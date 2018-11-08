@@ -1,0 +1,53 @@
+== Gateway Home Dir
+
+
+
+== Data Dir
+
+1. Java Property
+2. Environment Variable
+3. Configuration Property `gateway.data.dir`
+4. Default: `${gateway home}/data`
+
+
+=== Services Dir
+
+1. Configuration Property: `gateway.services.dir`
+2. Default: `${data dir}/services`
+
+
+=== Applications Dir
+
+1. Configuration Property: `gateway.applications.dir`
+2. Default: `${data dir}/applications`
+
+
+=== Deployment Dir
+
+1. Configuration Property: `gateway.deployment.dir`
+2. Default: `${data dir}/deployments`
+
+
+== Conf Dir
+
+1. Configuration Property: TODO
+2. Default: `${gateway home}/conf`
+
+=== Shared Providers Config Dir
+
+1. Default: `${conf dir}/shared-providers`
+
+
+=== Descriptors Dir
+
+1. Default: `${conf dir}/descriptors`
+
+
+=== Topologies Dir
+
+1. Default: `${conf dir}/topologies`
+
+
+== Log Dir
+
+TODO
