@@ -87,10 +87,66 @@ TODO: Not sure if it would also make sense to search for `knox-env.sh` in a diff
 ** If it can't find this file it'll create a copy of its internal one
 1. It'll set the properties `launcher.dir` (e.g. the `bin` dir) and `launcher.name` (e.g. `gateway`)
 1. Launcher then calls `Command` with the properties (now six by default) it just created
+** It first runs the constructor and then immediately calls `run()`
 
 == Command
 
+=== Constructor
+1. Command first consumes the passed in properties by loading the following properties into instance variables and removing them from the Properties object
+** `main.class`, `main.method` (default: `main`), `class.path`, `fork` (default: false), `redirect` (default: false), `restream` (default: true)
+** TODO: It also does something with args[]
+** The passed properties now have four properties left: `GATEWAY_HOME`, `log4j.configuration`, `launcher.name`, `launcher.dir`
+1. Launcher now separates these into two parts: `vars` are all properties that start with `env.` and it stores those in an instance variable. All others end up in `props`
+** By default `props` now contains those four properties from the last step and `vars` is empty
 
+=== run()
+Run makes a decision based on the variable `fork`. If it's true (default is false) it runs a class called `Forker` which at the moment throws an `UnsupportedOperationException`.
+
+TIP: This `fork` property along with `Forker` could be removed as no one can use it anyway
+
+The normal path now calls `Invoker#invoke(Command)`.
+
+== Invoker
+
+1. This first takes all `props` from the command and it sets all of them as Java System properties
+** It first resolves variables (e.g. `${launcher.dir}`)
++
+WARNING: This is part of the problem! I don't think we should be setting these properties here at least not when they come from the embedded `launcher.cfg`
+
+1. It creates a Classloader with the classPath created earlier
+1. It loads the main class
+1. It finds the main method
+1. It invokes the main method
+
+== GatewayServer
+
+1. It first initializes logging from the `log4j.configuration` System property using the `PropertyConfigurator`
+1. It creates a `GatewayConfigImpl` class
+
+== GatewayConfigImpl
+
+This is a subclass of the Hadoop `Configuration` class.
+So, it has properties which are basically key-value pairs.
+
+.`init()` Method
+1. It first loads _all_ environment variables into properties called `env.${ENV_NAME}`
+1. It then loads all Java System properties into properties called `sys.${PROPERTY_NAME}`
+1. It loads a _hardcoded_ list of files:
+* The files:
+** `conf/gateway-default.xml`
+** `conf/gateway-site.xml`
+* It looks in these places:
+** Java System Property `GATEWAY_HOME`
+** Environment Variable `GATEWAY_HOME`
+** Java System Property `user.dir`
+** Classpath (this is where it usually finds the `gateway-default.xml` file
++
+NOTE: Because we unconditionally set `GATEWAY_HOME` as a System property in the `Invoker` the Environment variable cannot take effect
++
+TIP: To work around this you can create an empty `conf` directory so it cannot find the files. This allows you to use the environment variable.
+
+.`initGatewayHomeDir(...)` method
+1.
 
 == Gateway Home Dir
 
