@@ -1,10 +1,57 @@
+= Introduction
+
+* Relevant https://lists.apache.org/thread.html/44d3a2dd8a6fb40baa0120acc88c9244404653706974fb422cb7d546@%3Cdev.knox.apache.org%3E[mailing list thread]
+
+=== Out Of Scope
+
+* Platforms other than Linux (e.g. Windows)
+* Tools other than Knox CLI and the Gateway itself
+
+
+= Maven Assemblies
+
+Knox uses the Maven Assembly plugin to build various JAR files.
+The important ones for us are:
+
+* `knoxcli.jar`
+** Main Class: `org.apache.knox.gateway.launcher.Launcher`
+** Actual Main Class: `org.apache.knox.gateway.util.KnoxCLI`
+** Maven Module: `knox-cli-launcher`
+* `gateway.jar`
+** Main Class: `org.apache.knox.gateway.launcher.Launcher`
+** Actual Main Class: `org.apache.knox.gateway.GatewayServer`
+** Maven Module: `gateway-server-launcher`
+
+= Shell scripts
+
+There is a bash script for each use-case:
+
+* `knoxcli.sh`
+* `gateway.sh`
+* `knox-env.sh`
+** Not called directly but sourced by the others
+
+The CLI tools don't start the relevant classes (e.g. `GatewayServer`) directly but instead starts a `Launcher` class (see above) which runs some bootstrapping code and then starts the relevant main class later.
+
+== gateway.sh
+
+1. foobar
+1. Sources `knox-env.sh`
+
+
+
+= Java
+
+
+
+
 == Gateway Home Dir
 
-
+TODO
 
 == Data Dir
 
-1. Java Property
+1. Java Property: TODO
 2. Environment Variable
 3. Configuration Property `gateway.data.dir`
 4. Default: `${gateway home}/data`
@@ -30,6 +77,7 @@
 
 == Conf Dir
 
+TODO: No Java Propertyy?
 1. Configuration Property: TODO
 2. Default: `${gateway home}/conf`
 
@@ -50,4 +98,37 @@
 
 == Log Dir
 
-TODO
+1. Java Property: `log4j.configuration`
+
+
+Knox uses the `PropertyConfigurator` to initialize Log4J.
+
+If that is not defined it uses a default from its embedded `gateway.cfg` file which points to `${GATEWAY_HOME}/conf/${launcher.name}-log4j.properties`.
+For this CSD we've modified the `gateway.sh` script to take an extra environment variable called `GATEWAY_LOG_OPTS` which we then point at the right location.
+
+
+== Implementation notes
+
+=== Changing the path where Knox looks for gateway-log4j.properties
+
+Knox uses the `PropertyConfigurator` to initialize Log4J using the Java system property `log4j.configuration`.
+If that is not defined it uses a default from its embedded `gateway.cfg` file which points to `${GATEWAY_HOME}/conf/${launcher.name}-log4j.properties`.
+For this CSD we've modified the `gateway.sh` script to take an extra environment variable called `GATEWAY_LOG_OPTS` which we then point at the right location.
+
+=== Changing the path where Knox looks for the gateway-site.xml file
+
+Knox looks for `gateway-site.xml` in these locations in this order:
+
+1. Java System Property `GATEWAY_HOME/conf/gateway-site.xml`
+2. Environment variable `GATEWAY_HOME/conf/gateway-site.xml`
+3. Java System Property `user.dir/conf/gateway-site.xml`
+4. Classpath `conf/gateway-site.xml`
+
+The path part `conf` is hardcoded.
+
+Unfortunately the launcher has an embedded cfg file that contains a hardcoded `GATEWAY_HOME` property which the `Invoker` class then propagates to a Java System property.
+The only way to have the environment variable take effect is by removing the default `conf/gateway-site.xml` file from the Knox distribution.
+The directory `conf` needs to stay though because `gateway.sh` checks for its existence.
+The path is hardcoded in the script and cannot be changed even though its pointing to the wrong location.
+Solution is to create an empty `conf` directory or to patch the `gateway.sh` file.
+This parcel does the former.
