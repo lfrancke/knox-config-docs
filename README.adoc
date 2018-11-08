@@ -33,15 +33,62 @@ There is a bash script for each use-case:
 
 The CLI tools don't start the relevant classes (e.g. `GatewayServer`) directly but instead starts a `Launcher` class (see above) which runs some bootstrapping code and then starts the relevant main class later.
 
+
 == gateway.sh
 
-1. foobar
 1. Sources `knox-env.sh`
+1. It checks whether various directories are readable and/or writable
+1. It runs Java with various parameters which cannot be overridden.
 
+WARNING: A Problem here is that the `gateway.sh` script uses a different way of resolving directories than the Java code. So it can fail startup even if the Java code would work.
+
+We can not resolve this problem when directories can be configured using `gateway-site.xml`.
+Environment variables and Java properties we could control because we're the script that passes them in but `gateway-site.xml` is not under our control.
+
+
+== knoxcli.sh
+
+This works very similar to `gateway.sh` with fewer options so I'd apply the same changes here.
+
+
+== Proposed changes
+
+1. https://github.com/anordal/shellharden[shellharden] & https://github.com/koalaman/shellcheck[shellcheck]
+1. Stop redirecting stderr & stdout to a file when the server runs in the foreground
+1. Introduce environment variables with a prefix of KNOX_GATEWAY_ that allow changing the internal ones
+** e.g. `KNOX_GATEWAY_LOG_OPTS`
+1. Remove the hardcoded checks for directory existence (TODO: Remove or fix if possible?)
+1. Move the function from `knox-env.sh` to `knox-functions.sh`
+1. Remove the empty `ENV_PID_DIR` from `knox-env.sh`
+* Emit a warning first if it's set outside
+1. Document all possible environment variables in `knox-env.sh` but leave them commented
+1. Entirely remove the checks for readability & writability of directories
+
+
+TODO: Not sure if it would also make sense to search for `knox-env.sh` in a different location (e.g. config dir)
 
 
 = Java
 
+== Launcher
+
+1. Finds the directory where its own JAR is located
+1. Calculates a "launcher name" which is based on the JAR file that's loaded (e.g. gateway.jar -> gateway)
+** These jar files are also located in the `bin` directory right next to the shell scripts
+1. It loads a Properties file called `launcher.cfg` file from the classpath (`META-INF/launcher.cfg`)
+** This default property file contains four properties:
+*** GATEWAY_HOME -> ${launcher.dir}/..
+*** log4j.configuration -> "${GATEWAY_HOME}/conf/${launcher.name}-log4j.properties
+*** main.class -> org.apache.knox.gateway.GatewayServer
+*** class.path `../conf;../lib/\*.jar;../dep/*.jar;../ext;../ext/*.jar`
+1. It reads two variables from this embedded file called "override" and "extract"
+** These are not present in the `launcher.cfg` for the Gateway or the KnoxCLI so they always default to `true`
+1. If `override` is true Launcher now tries to find and/or create a file called `${launcher name}.cfg` in the launcher jar directory
+** If it can't find this file it'll create a copy of its internal one
+1. It'll set the properties `launcher.dir` (e.g. the `bin` dir) and `launcher.name` (e.g. `gateway`)
+1. Launcher then calls `Command` with the properties (now six by default) it just created
+
+== Command
 
 
 
